@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Key Generator</title>
+    <style>
+        body { background: black; color: white; font-family: Arial; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        .buttons-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 40px; }
+        .key-btn { padding: 20px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
+        .key-btn:hover { transform: scale(1.05); }
+        .btn-1day { background: #FF6B6B; }
+        .btn-3days { background: #4ECDC4; }
+        .btn-7days { background: #45B7D1; }
+        .btn-30days { background: #96CEB4; }
+        .btn-lifetime { background: #FFD93D; }
+        
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; flex-wrap: wrap; }
+        .tab-btn { background: #222; color: white; border: none; padding: 12px 30px; border-radius: 5px 5px 0 0; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .tab-btn.active { background: #00FF00; color: black; }
+        .tab-btn.bin-btn.active { background: #FF6B6B; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .search-box { margin-bottom: 20px; display: flex; gap: 10px; }
+        .search-box input { flex: 1; padding: 12px; background: #222; border: 1px solid #333; color: white; border-radius: 5px; font-size: 16px; }
+        .search-box button { padding: 12px 25px; background: #00FF00; color: black; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .search-box button:hover { background: #00CC00; }
+        
+        .bin-controls { display: flex; gap: 10px; margin-bottom: 20px; justify-content: flex-end; }
+        .clear-bin-btn { background: #FF6B6B; color: black; border: none; padding: 10px 20px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+        .clear-bin-btn:hover { background: #FF4444; }
+        
+        .keys-table { background: #111; border-radius: 10px; padding: 20px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 15px 10px; background: #222; color: #00FF00; }
+        td { padding: 12px 10px; border-bottom: 1px solid #333; }
+        .active { color: #00FF00; font-weight: bold; }
+        .inactive { color: #FF6B6B; }
+        .deleted { color: #888888; font-style: italic; }
+        .deactivate-btn { background: #FF6B6B; color: black; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .deactivate-btn:hover { background: #FF4444; }
+        .reactivate-btn { background: #4ECDC4; color: black; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .reactivate-btn:hover { background: #45B7D1; }
+        .delete-btn { background: #888888; color: black; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .delete-btn:hover { background: #666666; }
+        .restore-btn { background: #4ECDC4; color: black; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .restore-btn:hover { background: #45B7D1; }
+        .flash { padding: 15px; background: #00FF00; color: black; border-radius: 5px; margin-bottom: 20px; font-weight: bold; }
+        .menu { display: flex; gap: 20px; }
+        .menu a { color: white; text-decoration: none; padding: 8px 15px; background: #333; border-radius: 5px; }
+        .menu a:hover { background: #444; }
+        .key-value { font-family: monospace; font-size: 14px; background: #222; padding: 5px; border-radius: 3px; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #111; padding: 30px; border-radius: 10px; max-width: 400px; text-align: center; border: 1px solid #00FF00; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        .modal-btn { padding: 10px 25px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .confirm-btn { background: #FF6B6B; color: black; }
+        .cancel-btn { background: #333; color: white; }
+        
+        .refresh-indicator { position: fixed; bottom: 20px; right: 20px; background: #333; color: #00FF00; padding: 8px 15px; border-radius: 20px; font-size: 12px; border: 1px solid #00FF00; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>❄️ Frostbyte KeyGen</h1>
+            <div class="menu">
+                <a href="{{ url_for('change_password') }}">🔐 Change Password</a>
+                <a href="{{ url_for('logout') }}">🚪 Logout</a>
+            </div>
+        </div>
+        
+        <div id="flash-messages">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        <h2>📅 Generate Key:</h2>
+        <div class="buttons-grid">
+            <a href="{{ url_for('generate_key_route', duration='1 day') }}"><button class="key-btn btn-1day">1 day</button></a>
+            <a href="{{ url_for('generate_key_route', duration='3 days') }}"><button class="key-btn btn-3days">3 days</button></a>
+            <a href="{{ url_for('generate_key_route', duration='7 days') }}"><button class="key-btn btn-7days">7 days</button></a>
+            <a href="{{ url_for('generate_key_route', duration='30 days') }}"><button class="key-btn btn-30days">30 days</button></a>
+            <a href="{{ url_for('generate_key_route', duration='Lifetime') }}"><button class="key-btn btn-lifetime">Lifetime</button></a>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('active')">✅ Active Keys (<span id="active-count">{{ active_keys|length }}</span>)</button>
+            <button class="tab-btn" onclick="showTab('deactivated')">📁 Deactivated Keys (<span id="deactivated-count">{{ deactivated_keys|length }}</span>)</button>
+            <button class="tab-btn bin-btn" onclick="showTab('deleted')">🗑️ Bin (<span id="deleted-count">{{ deleted_keys|length }}</span>)</button>
+        </div>
+        
+        <div id="active-tab" class="tab-content active">
+            <div class="search-box">
+                <input type="text" id="active-search" placeholder="🔍 Enter complete key...">
+                <button onclick="searchKeys('active')">Search</button>
+            </div>
+            <div class="keys-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Duration</th>
+                            <th>Created</th>
+                            <th>Timer</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="active-keys-body">
+                        {% for key in active_keys %}
+                        <tr data-key-id="{{ key.id }}">
+                            <td><span class="key-value">{{ key.key_value }}</span></td>
+                            <td>{{ key.duration }}</td>
+                            <td>{{ key.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td class="timer-cell">{{ key.time_remaining() }}</td>
+                            <td class="active">✅ Active</td>
+                            <td>
+                                <button class="deactivate-btn" onclick="confirmDeactivate({{ key.id }})">Deactivate</button>
+                                <button class="delete-btn" onclick="deleteKey({{ key.id }})">🗑️ Delete</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #666;">No active keys</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="deactivated-tab" class="tab-content">
+            <div class="search-box">
+                <input type="text" id="deactivated-search" placeholder="🔍 Enter complete key...">
+                <button onclick="searchKeys('deactivated')">Search</button>
+            </div>
+            <div class="keys-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Duration</th>
+                            <th>Created</th>
+                            <th>Deactivated on</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deactivated-keys-body">
+                        {% for key in deactivated_keys %}
+                        <tr data-key-id="{{ key.id }}">
+                            <td><span class="key-value">{{ key.key_value }}</span></td>
+                            <td>{{ key.duration }}</td>
+                            <td>{{ key.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ key.deactivated_at.strftime('%d.%m.%Y %H:%M') if key.deactivated_at else '-' }}</td>
+                            <td class="inactive">{{ key.get_status_text() }}</td>
+                            <td>
+                                {% if key.expires_at > now() %}
+                                <a href="{{ url_for('reactivate_key', key_id=key.id) }}"><button class="reactivate-btn">🔄 Reactivate</button></a>
+                                {% endif %}
+                                <button class="delete-btn" onclick="deleteKey({{ key.id }})">🗑️ Delete</button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #666;">No deactivated keys</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div id="deleted-tab" class="tab-content">
+            <div class="bin-controls">
+                <button class="clear-bin-btn" onclick="clearBin()">🗑️ Empty Bin</button>
+            </div>
+            <div class="search-box">
+                <input type="text" id="deleted-search" placeholder="🔍 Enter complete key...">
+                <button onclick="searchKeys('deleted')">Search</button>
+            </div>
+            <div class="keys-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Key</th>
+                            <th>Duration</th>
+                            <th>Created</th>
+                            <th>Deleted on</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deleted-keys-body">
+                        {% for key in deleted_keys %}
+                        <tr data-key-id="{{ key.id }}">
+                            <td><span class="key-value">{{ key.key_value }}</span></td>
+                            <td>{{ key.duration }}</td>
+                            <td>{{ key.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                            <td>{{ key.deleted_at.strftime('%d.%m.%Y %H:%M') if key.deleted_at else '-' }}</td>
+                            <td class="deleted">🗑️ Deleted</td>
+                            <td>
+                                <a href="{{ url_for('restore_key', key_id=key.id) }}"><button class="restore-btn">🔄 Restore</button></a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #666;">Bin is empty</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #FF6B6B;">⚠️ Really deactivate?</h3>
+            <p>Are you sure you want to deactivate key <span id="modal-key" style="color: #00FF00; font-weight: bold;"></span>?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm-btn" onclick="proceedDeactivate()">Yes, deactivate</button>
+                <button class="modal-btn cancel-btn" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <h3 style="color: #FF6B6B;">⚠️ Move to Bin?</h3>
+            <p>Key <span id="delete-modal-key" style="color: #00FF00; font-weight: bold;"></span> will be moved to Bin.</p>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm-btn" onclick="proceedDelete()">Yes, move</button>
+                <button class="modal-btn cancel-btn" onclick="closeDeleteModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="refresh-indicator" id="refresh-indicator">🔄 Update in 60s</div>
+    
+    <script>
+        let currentKeyId = null;
+        let currentDeleteKeyId = null;
+        let refreshInterval;
+        let secondsUntilRefresh = 60;
+        
+        function showTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            if (tab === 'active') {
+                document.getElementById('active-tab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            } else if (tab === 'deactivated') {
+                document.getElementById('deactivated-tab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            } else {
+                document.getElementById('deleted-tab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[2].classList.add('active');
+                document.querySelectorAll('.tab-btn')[2].classList.add('bin-btn');
+            }
+        }
+        
+        function confirmDeactivate(keyId) {
+            currentKeyId = keyId;
+            const keyCell = event.target.closest('tr').querySelector('.key-value');
+            const keyText = keyCell ? keyCell.textContent : 'the key';
+            document.getElementById('modal-key').textContent = keyText.substring(0, 15) + '...';
+            document.getElementById('confirmModal').style.display = 'flex';
+        }
+        
+        function proceedDeactivate() {
+            if (currentKeyId) {
+                window.location.href = "/confirm_deactivate/" + currentKeyId;
+            }
+        }
+        
+        function closeModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            currentKeyId = null;
+        }
+        
+        function deleteKey(keyId) {
+            currentDeleteKeyId = keyId;
+            const keyCell = event.target.closest('tr').querySelector('.key-value');
+            const keyText = keyCell ? keyCell.textContent : 'the key';
+            document.getElementById('delete-modal-key').textContent = keyText.substring(0, 15) + '...';
+            document.getElementById('deleteModal').style.display = 'flex';
+        }
+        
+        function proceedDelete() {
+            if (currentDeleteKeyId) {
+                window.location.href = "/delete_key/" + currentDeleteKeyId;
+            }
+        }
+        
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            currentDeleteKeyId = null;
+        }
+        
+        function clearBin() {
+            if (confirm('⚠️ Are you sure? All keys in Bin will be PERMANENTLY deleted!')) {
+                window.location.href = "/clear_bin";
+            }
+        }
+        
+        function searchKeys(tab) {
+            const searchInput = tab === 'active' 
+                ? document.getElementById('active-search').value 
+                : tab === 'deactivated'
+                    ? document.getElementById('deactivated-search').value
+                    : document.getElementById('deleted-search').value;
+            
+            fetch(`/search_keys?q=${encodeURIComponent(searchInput)}&tab=${tab}`)
+                .then(response => response.text())
+                .then(html => {
+                    if (tab === 'active') {
+                        document.getElementById('active-keys-body').innerHTML = html;
+                    } else if (tab === 'deactivated') {
+                        document.getElementById('deactivated-keys-body').innerHTML = html;
+                    } else {
+                        document.getElementById('deleted-keys-body').innerHTML = html;
+                    }
+                });
+        }
+        
+        function startAutoRefresh() {
+            refreshInterval = setInterval(refreshData, 60000);
+            setInterval(updateCountdown, 1000);
+        }
+        
+        function updateCountdown() {
+            secondsUntilRefresh--;
+            if (secondsUntilRefresh <= 0) {
+                secondsUntilRefresh = 60;
+            }
+            document.getElementById('refresh-indicator').textContent = `🔄 Update in ${secondsUntilRefresh}s`;
+        }
+        
+        function refreshData() {
+            fetch('/api/keys')
+                .then(response => response.json())
+                .then(data => {
+                    updateTable('active', data.active);
+                    updateTable('deactivated', data.deactivated);
+                    updateTable('deleted', data.deleted);
+                    
+                    document.getElementById('active-count').textContent = data.active.length;
+                    document.getElementById('deactivated-count').textContent = data.deactivated.length;
+                    document.getElementById('deleted-count').textContent = data.deleted.length;
+                    
+                    const indicator = document.getElementById('refresh-indicator');
+                    indicator.style.background = '#00FF00';
+                    indicator.style.color = 'black';
+                    setTimeout(() => { 
+                        indicator.style.background = '#333';
+                        indicator.style.color = '#00FF00';
+                    }, 200);
+                    
+                    secondsUntilRefresh = 60;
+                });
+        }
+        
+        function updateTable(tab, keys) {
+            const tbody = document.getElementById(tab + '-keys-body');
+            if (!tbody) return;
+            
+            let html = '';
+            
+            if (keys.length === 0) {
+                html = '<tr><td colspan="6" style="text-align: center; color: #666;">No ' + 
+                       (tab === 'active' ? 'active' : tab === 'deactivated' ? 'deactivated' : 'deleted') + 
+                       ' keys</td></tr>';
+            } else {
+                keys.forEach(key => {
+                    if (tab === 'active') {
+                        html += `<tr data-key-id="${key.id}">
+                            <td><span class="key-value">${key.key_value}</span></td>
+                            <td>${key.duration}</td>
+                            <td>${key.created_at}</td>
+                            <td class="timer-cell">${key.time_remaining}</td>
+                            <td class="active">✅ Active</td>
+                            <td>
+                                <button class="deactivate-btn" onclick="confirmDeactivate(${key.id})">Deactivate</button>
+                                <button class="delete-btn" onclick="deleteKey(${key.id})">🗑️ Delete</button>
+                            </td>
+                        </tr>`;
+                    } else if (tab === 'deactivated') {
+                        html += `<tr data-key-id="${key.id}">
+                            <td><span class="key-value">${key.key_value}</span></td>
+                            <td>${key.duration}</td>
+                            <td>${key.created_at}</td>
+                            <td>${key.deactivated_at}</td>
+                            <td class="inactive">${key.status}</td>
+                            <td>
+                                <button class="delete-btn" onclick="deleteKey(${key.id})">🗑️ Delete</button>
+                            </td>
+                        </tr>`;
+                    } else {
+                        html += `<tr data-key-id="${key.id}">
+                            <td><span class="key-value">${key.key_value}</span></td>
+                            <td>${key.duration}</td>
+                            <td>${key.created_at}</td>
+                            <td>${key.deleted_at}</td>
+                            <td class="deleted">🗑️ Deleted</td>
+                            <td>
+                                <a href="/restore_key/${key.id}"><button class="restore-btn">🔄 Restore</button></a>
+                            </td>
+                        </tr>`;
+                    }
+                });
+            }
+            
+            tbody.innerHTML = html;
+        }
+        
+        document.getElementById('active-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchKeys('active');
+        });
+        
+        document.getElementById('deactivated-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchKeys('deactivated');
+        });
+        
+        document.getElementById('deleted-search').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') searchKeys('deleted');
+        });
+        
+        window.onclick = function(event) {
+            if (event.target == document.getElementById('confirmModal')) {
+                closeModal();
+            }
+            if (event.target == document.getElementById('deleteModal')) {
+                closeDeleteModal();
+            }
+        }
+        
+        window.onload = function() {
+            startAutoRefresh();
+        }
+    </script>
+</body>
+</html>

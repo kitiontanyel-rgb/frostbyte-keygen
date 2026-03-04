@@ -1,0 +1,36 @@
+{% for key in keys %}
+<tr>
+    <td><span class="key-value">{{ key.key_value }}</span></td>
+    <td>{{ key.duration }}</td>
+    <td>{{ key.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+    {% if tab == 'active' %}
+        <td>{{ key.time_remaining() }}</td>
+        <td class="active">✅ Active</td>
+        <td>
+            <button class="deactivate-btn" onclick="confirmDeactivate({{ key.id }})">Deactivate</button>
+            <button class="delete-btn" onclick="deleteKey({{ key.id }})">🗑️ Delete</button>
+        </td>
+    {% elif tab == 'deactivated' %}
+        <td>{{ key.deactivated_at.strftime('%d.%m.%Y %H:%M') if key.deactivated_at else '-' }}</td>
+        <td class="inactive">{{ key.get_status_text() }}</td>
+        <td>
+            {% if key.expires_at > now() %}
+                <a href="{{ url_for('reactivate_key', key_id=key.id) }}"><button class="reactivate-btn">🔄 Reactivate</button></a>
+            {% endif %}
+            <button class="delete-btn" onclick="deleteKey({{ key.id }})">🗑️ Delete</button>
+        </td>
+    {% else %}
+        <td>{{ key.deleted_at.strftime('%d.%m.%Y %H:%M') if key.deleted_at else '-' }}</td>
+        <td class="deleted">🗑️ Deleted</td>
+        <td>
+            <a href="{{ url_for('restore_key', key_id=key.id) }}"><button class="restore-btn">🔄 Restore</button></a>
+        </td>
+    {% endif %}
+</tr>
+{% else %}
+<tr>
+    <td colspan="6" style="text-align: center; color: #666;">
+        No {% if tab == 'active' %}active{% elif tab == 'deactivated' %}deactivated{% else %}deleted{% endif %} keys found
+    </td>
+</tr>
+{% endfor %}
